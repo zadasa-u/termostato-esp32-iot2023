@@ -14,9 +14,11 @@ d = dht.DHT22(machine.Pin(DHT))
 
 # rele:
 rele = machine.Pin(RELE,machine.Pin.OUT)
+rele.value(1) # apagado (activo en bajo)
 
 # led para destellos:
 led = machine.Pin(LED,machine.Pin.OUT)
+led.value(1) # apagado (activo en bajo)
 
 # Constantes y etiquetas:
 SPT = 30 # temperatura umbral predeterminada
@@ -24,8 +26,10 @@ PER = 20 # periodo de publicacion predeterminado
 MOD = 'AUTO' # modo de funcionamiento predeterminado
 
 D = 1 # tiempo de destello del led
+destellar = False
 
-ID = config['client_id']
+ID = config['client_id'].decode()
+#ID = '78e36d1852e0'
 
 # defino cadenas para subtopicos:
 TT = '{}/temperatura'.format(ID)
@@ -37,7 +41,40 @@ TM = '{}/modo'.format(ID)
 ###########################################################
 # funciones para configuracion del cliente:
 def sub_cb(topic, msg, retained):
-    print('Topic = {} -> Valor = {}'.format(topic.decode(), msg.decode()))
+    dtopic = topic.decode()
+    dmsg = msg.decode()
+    print('Topic = {} -> Valor = {}'.format(dtopic, dmsg))
+    
+    global spt, per, mod, destellar
+
+    if dtopic == 'setpoint':
+        try:
+            spt = float(dmsg)
+        except OSError:
+            print('El mensaje no se puede convertir a flotante')
+    elif dtopic == 'periodo':
+        try:
+            per = float(dmsg)
+        except OSError:
+            print('El mensaje no se puede convertir a flotante')
+    elif dtopic == 'modo':
+        if dmsg in ('AUTO','MAN'):
+            mod = dmsg
+    elif dtopic == 'rele':
+        if mod == 'MAN':
+            if rele.value():
+                # encender rele:
+                rele.value(0)
+            else:
+                # apagar el rele:
+                rele.value(1)
+    elif dtopic == 'destello':
+        if dmsg == 'ON':
+            destellar = True
+        elif dmsg == 'OFF':
+            destellar = False
+        
+    
 
 async def wifi_han(state):
     print('Wifi is ', 'up' if state else 'down')
@@ -71,7 +108,7 @@ client = MQTTClient(config)
 async def main(client):
     await client.connect()
     
-    global temp, hum, spt, per, mod
+    global temp, hum, spt, per, mod, destellar
 
     # para pruebas:
     temp = 41
@@ -86,11 +123,17 @@ async def main(client):
     while True:
         print(f'    n = {n}')
         n+=1
-        #await client.publish(TT,'{}'.format(temp), qos = 1)
-        #await client.publish(TH,'{}'.format(hum), qos = 1)
-        #await client.publish(TS,'{}'.format(spt), qos = 1)
-        #await client.publish(TP,'{}'.format(per), qos = 1)
-        #await client.publish(TM,'{}'.format(mod), qos = 1)
+        if destellar:
+            led.value(0)
+            await asyncio.sleep(D)
+            led.value(1)
+            await asyncio.sleep(D)
+
+        await client.publish(TT,'{}'.format(temp), qos = 1)
+        await client.publish(TH,'{}'.format(hum), qos = 1)
+        await client.publish(TS,'{}'.format(spt), qos = 1)
+        await client.publish(TP,'{}'.format(per), qos = 1)
+        await client.publish(TM,'{}'.format(mod), qos = 1)
 
         '''try:
             d.measure()
