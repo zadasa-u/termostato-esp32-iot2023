@@ -3,6 +3,7 @@ from mqtt_local import config
 import uasyncio as asyncio
 import dht, machine
 
+
 # Configuracion de pines:
 DHT = 13
 RELE = 12
@@ -22,7 +23,7 @@ SPT = 30 # temperatura umbral predeterminada
 PER = 20 # periodo de publicacion predeterminado
 MOD = 'AUTO' # modo de funcionamiento predeterminado
 
-D = 0.5 # tiempo de destello del led
+D = 1 # tiempo de destello del led
 
 ID = config['client_id']
 
@@ -70,9 +71,28 @@ client = MQTTClient(config)
 async def main(client):
     await client.connect()
     
+    global temp, hum, spt, per, mod
+
+    # para pruebas:
+    temp = 41
+    hum = 61
+    spt = SPT
+    per = PER
+    mod = MOD
+
+    n = 1
+
     await asyncio.sleep(2)
     while True:
-        try:
+        print(f'    n = {n}')
+        n+=1
+        #await client.publish(TT,'{}'.format(temp), qos = 1)
+        #await client.publish(TH,'{}'.format(hum), qos = 1)
+        #await client.publish(TS,'{}'.format(spt), qos = 1)
+        #await client.publish(TP,'{}'.format(per), qos = 1)
+        #await client.publish(TM,'{}'.format(mod), qos = 1)
+
+        '''try:
             d.measure()
             try:
                 temperatura=d.temperature()
@@ -85,8 +105,9 @@ async def main(client):
             except OSError as e:
                 print("sin sensor humedad")
         except OSError as e:
-            print("sin sensor")
-        await asyncio.sleep(20)
+            print("sin sensor")'''
+        
+        await asyncio.sleep(per)
 
 try:
     asyncio.run(main(client))
