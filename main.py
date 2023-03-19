@@ -25,7 +25,8 @@ SPT = 30 # temperatura umbral predeterminada
 PER = 20 # periodo de publicacion predeterminado
 MOD = 'AUTO' # modo de funcionamiento predeterminado
 
-D = 1 # tiempo de destello del led
+D = 0.5 # tiempo de destello del led
+N = 5 # numero de destellos
 destellar = False
 
 ID = config['client_id'].decode()
@@ -50,6 +51,7 @@ def sub_cb(topic, msg, retained):
     if dtopic == 'setpoint':
         try:
             spt = float(dmsg)
+            eval_spt()
         except OSError:
             print('El mensaje no se puede convertir a flotante')
     elif dtopic == 'periodo':
@@ -60,6 +62,8 @@ def sub_cb(topic, msg, retained):
     elif dtopic == 'modo':
         if dmsg in ('AUTO','MAN'):
             mod = dmsg
+            if dmsg == 'AUTO':
+                eval_spt()
     elif dtopic == 'rele':
         if mod == 'MAN':
             if rele.value():
@@ -74,10 +78,8 @@ def sub_cb(topic, msg, retained):
         elif dmsg == 'OFF':
             destellar = False
         
-    
-
 async def wifi_han(state):
-    print('Wifi is ', 'up' if state else 'down')
+    print('Wifi is', 'UP' if state else 'DOWN')
     await asyncio.sleep(1)
 
 async def conn_han(client):
@@ -105,32 +107,43 @@ client = MQTTClient(config)
 
 ###########################################################
 # funciones generales
+def eval_spt():
+    '''Cuando el modo es AUTO, evalua si la temperatura
+    supera el umbral fijado por setpoint para encender el rele'''
+    if mod == 'AUTO' and temp > spt:
+        rele.value(0) # activa rele (activo en bajo)
+    else:
+        rele.value(1) # desactiva rele (activo en bajo)
+
+async def dest():
+    global destellar
+    while True:
+        if destellar:
+            # destella N veces
+            for i in range(N):
+                led.value(0)
+                await asyncio.sleep(D)
+                led.value(1)
+                await asyncio.sleep(D)
+            destellar = False
+        await asyncio.sleep(2)
+
 async def main(client):
     await client.connect()
     
     global temp, hum, spt, per, mod, destellar
 
     # para pruebas:
-    temp = 41
-    hum = 61
+    temp = 31.4
+    hum = 68.9
     spt = SPT
     per = PER
     mod = MOD
 
-    n = 1
-
     await asyncio.sleep(2)
     while True:
-        print(f'    n = {n}')
-        n+=1
-        if destellar:
-            led.value(0)
-            await asyncio.sleep(D)
-            led.value(1)
-            await asyncio.sleep(D)
-
-        await client.publish(TT,'{}'.format(temp), qos = 1)
-        await client.publish(TH,'{}'.format(hum), qos = 1)
+        #await client.publish(TT,'{}'.format(temp), qos = 1)
+        #await client.publish(TH,'{}'.format(hum), qos = 1)
         await client.publish(TS,'{}'.format(spt), qos = 1)
         await client.publish(TP,'{}'.format(per), qos = 1)
         await client.publish(TM,'{}'.format(mod), qos = 1)
@@ -150,7 +163,13 @@ async def main(client):
         except OSError as e:
             print("sin sensor")'''
         
+        # evalua el setpoint con la ultima lectura de temperatura
+        eval_spt()
+
         await asyncio.sleep(per)
+
+async def master():
+    await asyncio.gather(main(client),dest())
 
 try:
     asyncio.run(main(client))
