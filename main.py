@@ -38,6 +38,7 @@ TH = '{}/humedad'.format(ID)
 TS = '{}/setpoint'.format(ID)
 TP = '{}/periodo'.format(ID)
 TM = '{}/modo'.format(ID)
+TR = '{}/rele'.format(ID)
 
 ###########################################################
 # funciones para configuracion del cliente:
@@ -51,7 +52,7 @@ def sub_cb(topic, msg, retained):
     if dtopic == 'setpoint':
         try:
             spt = float(dmsg)
-            eval_spt()
+            eval_spt() # actualizacion instantanea de ser necesario
         except OSError:
             print('El mensaje no se puede convertir a flotante')
     elif dtopic == 'periodo':
@@ -63,7 +64,8 @@ def sub_cb(topic, msg, retained):
         if dmsg in ('AUTO','MAN'):
             mod = dmsg
             if dmsg == 'AUTO':
-                eval_spt()
+                #pass
+                eval_spt() # actualizacion instantanea de ser necesario
     elif dtopic == 'rele':
         if mod == 'MAN':
             if rele.value():
@@ -109,7 +111,9 @@ client = MQTTClient(config)
 # funciones generales
 def eval_spt():
     '''Cuando el modo es AUTO, evalua si la temperatura
-    supera el umbral fijado por setpoint para encender el rele'''
+    supera el umbral fijado por setpoint para encender el rele.
+    (no es asincrona pero es util para asegurar una respuesta rapida
+    al recibir una actualizacion de setpoint o modo)'''
     if mod == 'AUTO' and temp > spt:
         rele.value(0) # activa rele (activo en bajo)
     else:
@@ -128,17 +132,20 @@ async def dest():
             destellar = False
         await asyncio.sleep(2)
 
+async def monit():
+    global mod, temp, spt
+    while True:
+        if mod == 'AUTO':
+            if temp > spt:
+                rele.value(0) # activa rele (activo en bajo)
+            else:
+                rele.value(1) # desactiva rele
+        await asyncio.sleep(5)
+
 async def main(client):
     await client.connect()
     
     global temp, hum, spt, per, mod, destellar
-
-    # para pruebas:
-    temp = 31.4
-    hum = 68.9
-    spt = SPT
-    per = PER
-    mod = MOD
 
     await asyncio.sleep(2)
     while True:
@@ -147,6 +154,7 @@ async def main(client):
         await client.publish(TS,'{}'.format(spt), qos = 1)
         await client.publish(TP,'{}'.format(per), qos = 1)
         await client.publish(TM,'{}'.format(mod), qos = 1)
+        await client.publish(TM,'{}'.format('ON' if rele.value else 'OFF'), qos = 1)
 
         '''try:
             d.measure()
@@ -164,15 +172,22 @@ async def main(client):
             print("sin sensor")'''
         
         # evalua el setpoint con la ultima lectura de temperatura
-        eval_spt()
+        #eval_spt() # reemplazada por su contraparte asincrona: monit()
 
         await asyncio.sleep(per)
 
 async def master():
-    await asyncio.gather(main(client),dest())
+    await asyncio.gather(main(client), monit(), dest())
 
 try:
-    asyncio.run(main(client))
+    # para pruebas:
+    temp = 31.4
+    hum = 68.9
+    spt = SPT
+    per = PER
+    mod = MOD
+    #asyncio.run(main(client))
+    asyncio.run(master())
 finally:
     client.close()
     asyncio.new_event_loop()
