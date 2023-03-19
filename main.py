@@ -1,6 +1,7 @@
 from mqtt_as import MQTTClient
 from mqtt_local import config
 import uasyncio as asyncio
+import ujson as json
 import dht, machine
 
 
@@ -25,21 +26,22 @@ SPT = 30 # temperatura umbral predeterminada
 PER = 20 # periodo de publicacion predeterminado
 MOD = 'AUTO' # modo de funcionamiento predeterminado
 
-D = 0.5 # tiempo de destello del led
-N = 5 # numero de destellos
+D = 0.2 # tiempo de destello del led
+N = 15 # numero de destellos
 destellar = False
 
 ID = config['client_id'].decode()
 #ID = '78e36d1852e0'
 
 # defino cadenas para subtopicos:
+'''
 TT = '{}/temperatura'.format(ID)
 TH = '{}/humedad'.format(ID)
 TS = '{}/setpoint'.format(ID)
 TP = '{}/periodo'.format(ID)
 TM = '{}/modo'.format(ID)
 TR = '{}/rele'.format(ID)
-
+'''
 ###########################################################
 # funciones para configuracion del cliente:
 def sub_cb(topic, msg, retained):
@@ -86,8 +88,8 @@ async def wifi_han(state):
 
 async def conn_han(client):
     # topicos que el mismo cliente publica
-    #await client.subscribe(TT, 1)
-    #await client.subscribe(TH, 1)
+    #await client.subscribe('temperatura', 1)
+    #await client.subscribe('humedad', 1)
 
     # topicos para comando remoto del termostato:
     await client.subscribe('setpoint', 1)
@@ -149,43 +151,58 @@ async def main(client):
 
     await asyncio.sleep(2)
     while True:
-        #await client.publish(TT,'{}'.format(temp), qos = 1)
-        #await client.publish(TH,'{}'.format(hum), qos = 1)
+        # en caso de publicar la informacion como subtopicos:
+        '''await client.publish(TT,'{}'.format(temp), qos = 1)
+        await client.publish(TH,'{}'.format(hum), qos = 1)
         await client.publish(TS,'{}'.format(spt), qos = 1)
         await client.publish(TP,'{}'.format(per), qos = 1)
         await client.publish(TM,'{}'.format(mod), qos = 1)
-        await client.publish(TM,'{}'.format('ON' if rele.value else 'OFF'), qos = 1)
-
-        '''try:
+        await client.publish(TM,'{}'.format('ON' if rele.value else 'OFF'), qos = 1)'''
+        
+        try:
             d.measure()
             try:
-                temperatura=d.temperature()
-                await client.publish(TT, '{}'.format(temperatura), qos = 1)
+                temp=d.temperature()
+                #await client.publish(TT, '{}'.format(temperatura), qos = 1)
             except OSError as e:
                 print("sin sensor temperatura")
             try:
-                humedad=d.humidity()
-                await client.publish(TH, '{}'.format(humedad), qos = 1)
+                hum=d.humidity()
+                #await client.publish(TH, '{}'.format(humedad), qos = 1)
             except OSError as e:
                 print("sin sensor humedad")
         except OSError as e:
-            print("sin sensor")'''
+            print("sin sensor")
         
         # evalua el setpoint con la ultima lectura de temperatura
         #eval_spt() # reemplazada por su contraparte asincrona: monit()
+
+        # publicacion de datos:
+        DAT = {
+            'temperatura':'{:.1f}'.format(temp),
+            'humedad':'{:.1f}'.format(hum),
+            'setpoint':'{:.1f}'.format(spt),
+            'periodo':'{:.1f}'.format(per),
+            'modo':mod,
+            'rele':('ON' if rele.value() else 'OFF')
+            }
+        JDAT = json.dumps(DAT)
+        await client.publish('{}'.format(ID), JDAT, qos = 1)
 
         await asyncio.sleep(per)
 
 async def master():
     await asyncio.gather(main(client), monit(), dest())
 
+# para pruebas:
+temp = 31.4
+hum = 68.9
+spt = SPT
+per = PER
+mod = MOD
+
 try:
-    # para pruebas:
-    temp = 31.4
-    hum = 68.9
-    spt = SPT
-    per = PER
-    mod = MOD
+    
     #asyncio.run(main(client))
     asyncio.run(master())
 finally:
