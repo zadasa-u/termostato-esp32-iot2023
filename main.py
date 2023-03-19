@@ -70,10 +70,10 @@ def sub_cb(topic, msg, retained):
                 eval_spt() # actualizacion instantanea de ser necesario
     elif dtopic == 'rele':
         if mod == 'MAN':
-            if rele.value():
+            if dmsg == 'ON':
                 # encender rele:
                 rele.value(0)
-            else:
+            elif dmsg == 'OFF':
                 # apagar el rele:
                 rele.value(1)
     elif dtopic == 'destello':
@@ -184,7 +184,7 @@ async def main(client):
             'setpoint':'{:.1f}'.format(spt),
             'periodo':'{:.1f}'.format(per),
             'modo':mod,
-            'rele':('ON' if rele.value() else 'OFF')
+            'rele':('OFF' if rele.value() else 'ON')
             }
         JDAT = json.dumps(DAT)
         await client.publish('{}'.format(ID), JDAT, qos = 1)
