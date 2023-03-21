@@ -1,29 +1,15 @@
 import btree
 
-def createdb(s, p, m):
+def storedb(spt, per, mod):
     with open('db','wb') as f:
         db = btree.open(f)
 
-        db[b'setpoint'] = b'{:.1f}'.format(s)
-        db[b'periodo'] = str(p).encode()
-        db[b'modo'] = str(m).encode()
-
-        db.flush()
-        db.close()
-
-def storedb(s=None, p=None, m=None):
-    with open('db','wb') as f:
-        db = btree.open(f)
-
-        if s != None:
-            db[b'setpoint'] = str(s).encode()
-            print('Setpoint guardado')
-        if p != None:
-            db[b'periodo'] = str(p).encode()
-            print('Periodo guardado')
-        if m != None:
-            db[b'modo'] = m.encode()
-            print('Modo guardado')
+        try:
+            db[b'setpoint'] = str(spt).encode()
+            db[b'periodo'] = str(per).encode()
+            db[b'modo'] = mod.encode()
+        except:
+            print('Error en los tipos de datos')
 
         db.flush()
         db.close()
@@ -32,11 +18,14 @@ def readdb():
     with open('db','rb') as f:
         db = btree.open(f)
 
-        s = float(db[b'setpoint'].decode())
-        p = float(db[b'periodo'].decode())
-        m = db[b'modo'].decode()
+        try:
+            str = float(db[b'setpoint'].decode())
+            per = float(db[b'periodo'].decode())
+            mod = db[b'modo'].decode()
+        except:
+            print('Clave/s no encontrada/s')
 
         db.flush()
         db.close()
 
-    return s, p, m
+    return str, per, mod
