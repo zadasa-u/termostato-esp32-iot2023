@@ -55,20 +55,20 @@ def sub_cb(topic, msg, retained):
     if dtopic == 'setpoint':
         try:
             spt = float(dmsg)
-            storedb(s=spt)
+            storedb(s=spt,p=per,m=mod)
             eval_spt() # actualizacion instantanea de ser necesario
         except OSError:
             print('El mensaje no se puede convertir a flotante')
     elif dtopic == 'periodo':
         try:
             per = float(dmsg)
-            storedb(p=per)
+            storedb(s=spt,p=per,m=mod)
         except OSError:
             print('El mensaje no se puede convertir a flotante')
     elif dtopic == 'modo':
         if dmsg in ('AUTO','MAN'):
             mod = dmsg
-            storedb(m=mod)
+            storedb(s=spt,p=per,m=mod)
             if dmsg == 'AUTO':
                 #pass
                 eval_spt() # actualizacion instantanea de ser necesario
@@ -205,13 +205,15 @@ hum = 68.9
 per = PER
 mod = MOD """
 
-storedb(SPT,PER,MOD) # crea la base de datos y almacena los valores por defecto
-spt, per, mod = SPT, PER, MOD
+#storedb(SPT,PER,MOD) # crea la base de datos y almacena los valores por defecto
+#spt, per, mod = SPT, PER, MOD
 
 if 'db' not in uos.listdir():
+    print('Base de datos no encontrada \n ...creando una nueva')
     createdb(SPT,PER,MOD) # crea la base de datos y almacena los valores por defecto
     spt, per, mod = SPT, PER, MOD
 else:
+    print('Base de datos encontrada \n ...leyendo datos')
     spt, per, mod = readdb()
 
 try:
