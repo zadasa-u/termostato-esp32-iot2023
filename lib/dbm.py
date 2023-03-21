@@ -1,31 +1,39 @@
 import btree
 
-""" def createdb(spt, per, mod):
+def createdb(s, p, m):
     with open('db','wb') as f:
         db = btree.open(f)
 
-        db[b'setpoint'] = spt.encode()
-        db[b'periodo'] = per.encode()
-        db[b'modo'] = mod.encode()
+        db[b'setpoint'] = s.encode()
+        db[b'periodo'] = p.encode()
+        db[b'modo'] = m.encode()
 
-        db.close() """
+        db.flush()
+        db.close()
 
-def storedb(spt, per, mod):
+def storedb(s=None, p=None, m=None):
     with open('db','wb') as f:
         db = btree.open(f)
 
-        db[b'setpoint'] = str(spt).encode()
-        db[b'periodo'] = str(per).encode()
-        db[b'modo'] = mod.encode()
+        if s != None:
+            db[b'setpoint'] = str(s).encode()
+        if p != None:
+            db[b'periodo'] = str(p).encode()
+        if m != None:
+            db[b'modo'] = m.encode()
 
+        db.flush()
         db.close()
 
 def readdb():
     with open('db','rb') as f:
         db = btree.open(f)
 
-        spt = float(db[b'setpoint'].decode())
-        per = float(db[b'periodo'].decode())
-        mod = db[b'modo'].decode()
+        s = float(db[b'setpoint'].decode())
+        p = float(db[b'periodo'].decode())
+        m = db[b'modo'].decode()
 
-    return spt, per, mod
+        db.flush()
+        db.close()
+
+    return s, p, m

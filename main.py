@@ -1,6 +1,6 @@
 from mqtt_as import MQTTClient
 from mqtt_local import config
-from dbm import readdb, storedb
+from dbm import createdb,readdb, storedb
 import uasyncio as asyncio
 import ujson as json
 import dht, machine, uos
@@ -31,7 +31,7 @@ D = 0.2 # tiempo de destello del led
 N = 15 # numero de destellos
 destellar = False
 
-ID = config['client_id'].decode()
+ID = '(SDZ)' + config['client_id'].decode()
 #ID = '78e36d1852e0'
 
 # defino cadenas para subtopicos:
@@ -55,17 +55,20 @@ def sub_cb(topic, msg, retained):
     if dtopic == 'setpoint':
         try:
             spt = float(dmsg)
+            storedb(s=spt)
             eval_spt() # actualizacion instantanea de ser necesario
         except OSError:
             print('El mensaje no se puede convertir a flotante')
     elif dtopic == 'periodo':
         try:
             per = float(dmsg)
+            storedb(p=per)
         except OSError:
             print('El mensaje no se puede convertir a flotante')
     elif dtopic == 'modo':
         if dmsg in ('AUTO','MAN'):
             mod = dmsg
+            storedb(m=mod)
             if dmsg == 'AUTO':
                 #pass
                 eval_spt() # actualizacion instantanea de ser necesario
@@ -202,8 +205,11 @@ hum = 68.9
 per = PER
 mod = MOD """
 
+storedb(SPT,PER,MOD) # crea la base de datos y almacena los valores por defecto
+spt, per, mod = SPT, PER, MOD
+
 if 'db' not in uos.listdir():
-    storedb(SPT,PER,MOD) # crea la base de datos y almacena los valores por defecto
+    createdb(SPT,PER,MOD) # crea la base de datos y almacena los valores por defecto
     spt, per, mod = SPT, PER, MOD
 else:
     spt, per, mod = readdb()
