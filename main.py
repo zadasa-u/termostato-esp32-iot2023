@@ -32,7 +32,6 @@ N = 15 # numero de destellos
 destellar = False
 
 ID = '(SDZ)' + config['client_id'].decode()
-#ID = '78e36d1852e0'
 
 # defino cadenas para subtopicos:
 '''
