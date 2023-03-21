@@ -1,8 +1,9 @@
 from mqtt_as import MQTTClient
 from mqtt_local import config
+from dbm import readdb, storedb
 import uasyncio as asyncio
 import ujson as json
-import dht, machine
+import dht, machine, uos
 
 
 # Configuracion de pines:
@@ -197,12 +198,17 @@ async def master():
 # para pruebas:
 temp = 31.4
 hum = 68.9
-spt = SPT
+""" spt = SPT
 per = PER
-mod = MOD
+mod = MOD """
+
+if 'db' not in uos.listdir():
+    storedb(SPT,PER,MOD) # crea la base de datos y almacena los valores por defecto
+    spt, per, mod = SPT, PER, MOD
+else:
+    spt, per, mod = readdb()
 
 try:
-    
     #asyncio.run(main(client))
     asyncio.run(master())
 finally:
