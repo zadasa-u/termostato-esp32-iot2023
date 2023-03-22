@@ -24,7 +24,7 @@ D = 0.2 # tiempo de destello del led
 N = 15 # numero de destellos
 
 ID = '(SDZ)' + config['client_id'].decode()
-TR = 1 # periodo de lectura de sensor
+TR = 5 # periodo de lectura de sensor
 
 # variables globales:
 DAT = {
