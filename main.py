@@ -23,8 +23,8 @@ led.value(1) # apagado (activo en bajo)
 D = 0.2 # tiempo de destello del led
 N = 15 # numero de destellos
 
-ID = '(SDZ)' + config['client_id'].decode()
-TR = 1 # periodo de lectura de sensor
+ID = config['client_id'].decode()
+TR = 2 # periodo de lectura de sensor
 
 # variables globales:
 DAT = {
@@ -150,7 +150,11 @@ async def main(client):
     await asyncio.sleep(2)
     
     while True: 
-        await client.publish('{}'.format(ID), json.dumps(DAT), qos = 1)
+        DATENV = {
+            'temperatura':'{%:.1f}'.format(DAT['temperatura']),
+            'humedad':'{%:.1f}'.format(DAT['humedad'])
+            }
+        await client.publish('{}'.format(ID), json.dumps(DATENV), qos = 1)
 
         await asyncio.sleep(DAT['periodo'])
 
