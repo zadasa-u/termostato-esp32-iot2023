@@ -23,7 +23,7 @@ led.value(1) # apagado (activo en bajo)
 D = 0.2 # tiempo de destello del led
 N = 15 # numero de destellos
 
-ID = config['client_id'].decode()
+TOPICO = 'sensores_remotos/'+config['client_id'].decode()
 TR = 2 # periodo de lectura de sensor
 
 # variables globales:
@@ -43,37 +43,46 @@ def sub_cb(topic, msg, retained):
     dtopic = topic.decode()
     dmsg = msg.decode()
 
-    print('Topic = {} -> Valor = {}'.format(dtopic, dmsg))
+    print('Topico = {} -> Valor = {}'.format(dtopic, dmsg))
+
+    if dtopic != TOPICO:
+        _, uid, parametro = dtopic.split('/')
+        print(f'_:{_} uid:{uid} parametro:{parametro}')
+    else:
+        # ha recibido su propia publicación
+        uid = None # ignora las comprobaciones con el if siguiente
 
     global destellar
     mod = False
 
-    if dtopic == 'setpoint':
-        try:
-            DAT['setpoint'] = float(dmsg)    
-            mod = True
-        except OSError:
-            print('El mensaje no se puede convertir a flotante')
-    elif dtopic == 'periodo':
-        try:
-            DAT['periodo'] = float(dmsg)
-            mod = True
-        except OSError:
-            print('El mensaje no se puede convertir a flotante')
-    elif dtopic == 'modo':
-        if dmsg in ('AUTO','MAN'):
-            DAT['modo'] = dmsg
-            mod = True
-    elif dtopic == 'rele':
-        if DAT['modo'] == 'MAN':
-            if dmsg == 'ON':
-                releOn()
-            elif dmsg == 'OFF':
-                releOff()
-    elif dtopic == 'destello':
-        destellar = (dmsg == 'ON')
-    
-    if mod: storedb(DAT['setpoint'],DAT['periodo'],DAT['modo'])
+
+    if uid == config["client_id"].decode() or uid == 'todos':
+        if parametro == 'setpoint':
+            try:
+                DAT['setpoint'] = float(dmsg)    
+                mod = True
+            except OSError:
+                print(f'El mensaje {dmsg} no se puede convertir a flotante')
+        elif parametro == 'periodo':
+            try:
+                DAT['periodo'] = float(dmsg)
+                mod = True
+            except OSError:
+                print('El mensaje no se puede convertir a flotante')
+        elif parametro == 'modo':
+            if dmsg in ('AUTO','MAN'):
+                DAT['modo'] = dmsg
+                mod = True
+        elif parametro == 'rele':
+            if DAT['modo'] == 'MAN':
+                if dmsg == 'ON':
+                    releOn()
+                elif dmsg == 'OFF':
+                    releOff()
+        elif parametro == 'destello':
+            destellar = (dmsg == 'ON')
+        
+        if mod: storedb(DAT['setpoint'],DAT['periodo'],DAT['modo'])
         
 async def wifi_han(state):
     print('Wifi is', 'UP' if state else 'DOWN')
@@ -81,12 +90,14 @@ async def wifi_han(state):
 
 async def conn_han(client):
     # topicos para comando remoto del termostato:
-    await client.subscribe('setpoint', 1)
+    await client.subscribe(f'{TOPICO}/#', 1)
+    await client.subscribe('sensores_remotos/todos/#')
+    """ await client.subscribe('setpoint', 1)
     await client.subscribe('periodo', 1)
     await client.subscribe('modo', 1)
     
     await client.subscribe('destello', 1)
-    await client.subscribe('rele', 1)
+    await client.subscribe('rele', 1) """
 
 # Define configuracion del cliente
 config['subs_cb'] = sub_cb
@@ -151,10 +162,10 @@ async def main(client):
     
     while True: 
         DATENV = {
-            'temperatura':'{%:.1f}'.format(DAT['temperatura']),
-            'humedad':'{%:.1f}'.format(DAT['humedad'])
+            'temperatura':'{}'.format(DAT['temperatura']),
+            'humedad':'{}'.format(DAT['humedad'])
             }
-        await client.publish('{}'.format(ID), json.dumps(DATENV), qos = 1)
+        await client.publish(f'{TOPICO}', json.dumps(DATENV), qos = 1)
 
         await asyncio.sleep(DAT['periodo'])
 
